@@ -23,30 +23,29 @@ And also you should know that valysis only deals with VSA and nothing else like 
 |                        Target Lifter / Engine                         |
 |               (e.g., Ghidra PCODE / IDA Microcode / IR)               |
 +-----------------------------------------------------------------------+
-|
-v
+                                   |
+                                   v
 +-----------------------------------------------------------------------+
 |                           Memory State & ValueSets                    |
 |  - Tracks value mappings across multiple MemoryRegions                |
 |  - Manages byte-level serialization / endianness / strong & weak updates|
 +-----------------------------------------------------------------------+
-|
-v
+                                   |
+                                   v
 +-----------------------------------------------------------------------+
 |                            HybridSetDomain                            |
 |  - If cardinality <= K (e.g., 8): Track exact discrete value set      |
 |  - If cardinality > K: Widens automatically to VSAReducedState        |
 +-----------------------------------------------------------------------+
-|
-v
+                                   |
+                                   v
 +-----------------------------------------------------------------------+
 |                       VSAReducedState (Product)                       |
 |  - Synchronizes CircularStridedInterval and TristateBitVector         |
-|  - Executes mutual reduction via `_reduce()` to tighten upper/lower bounds|
+|  - Executes mutual reduction via _reduce() to tighten upper/lower bounds|
 +-----------------------------------------------------------------------+
-/                                   
-
-v                                     v
+                 /                                   \
+                v                                     v
 +-------------------------------+     +---------------------------------+
 | CircularStridedInterval (CSI) |     |     TristateBitVector (TBV)     |
 | - Stride, Lower, Upper bounds |     | - Known 1s, Known 0s, Unknowns  |
