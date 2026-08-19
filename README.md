@@ -193,7 +193,7 @@ git clone https://codeberg.org/nulsie/valysis.git
 GitHub:
 
 ```bash
-git clone https://github.com/nulsie/valyssis.git
+git clone https://github.com/nulsie/valysis.git
 
 ```
 
