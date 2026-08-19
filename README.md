@@ -186,14 +186,14 @@ GIT clone:
 Codeberg:
 
 ```bash
-git clone [https://codeberg.org/nulsie/valysis.git](https://codeberg.org/nulsie/valysis.git)
+git clone https://codeberg.org/nulsie/valysis.git
 
 ```
 
 GitHub:
 
 ```bash
-git clone [https://github.com/nulsie/valyssis.git](https://github.com/nulsie/valyssis.git)
+git clone https://github.com/nulsie/valyssis.git
 
 ```
 
