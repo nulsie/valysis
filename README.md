@@ -67,7 +67,7 @@ Signed & Unsigned Domain Tracking by `DualInterval`
 
 Signed versus unsigned range tracking is handled by maintaining both an unsigned domain (`u_domain`) and a signed domain (`s_domain`) simultaneously. Instead of picking one representation and losing precision during signed/unsigned comparisons, the `_synchronize()` method shifts domain bounds by the sign bit to cross-refine both contexts.
 
-^ *Strong vs. Weak Updates*: You correctly attempt strong updates only when a pointer resolves to a single, unambiguous concrete offset within a `MemoryRegion`.
+^ *Strong vs. Weak Updates*: attempt strong updates only when a pointer resolves to a single, unambiguous concrete offset within a `MemoryRegion`.
 
 *Endianness Support*: The store and load functions respect endianness by properly extracting and concatenating byte-sized slices.
 
