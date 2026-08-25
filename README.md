@@ -8,7 +8,7 @@ trying to make a IR(Intermediate Representation) based static analysis RE tool i
 creating entire VSA engines and CFGs from scratch are notoriously difficult if not impossible and litearly there was no dedicated VSA library
 available. So i made an entire fully functional precision-focused library dedicated just for VSA from scratch and arguably the first in Python, and that is *valysis*.
 
-valysis is decoupled from any specific instruction set architecture or Intermediate Representation (IR). It provides a sound, flexible backend domain engine which is superior in precision rate than Angr(from the tests I've done in a short-term)^^ that can be attached to 
+valysis is decoupled from any specific instruction set architecture or Intermediate Representation (IR). It provides a sound, flexible backend domain engine which is superior in precision rate than Angr^^ that can be attached to 
 Ghidra PCODE, IDA Microcode, Triton ASTs, Binary Ninja LLIL/MLIL, or custom emulation lifters. To preserve precision across mixed
 arithmetic-bitwise code, the lib combines Circular Strided Interval(better than the usual standard of using the less precision-focused Strided Interval) with Tristate BitVectors via mutual reduction. Then it natively supports arbitrary bit-widths (8, 16, 32, 64, 128bits) per variable.
 And also accurately tracks `signed` and `unsigned` ranges bit-by-bit which eliminates domain divergence under signed and unsigned branch conditions(more on this is discussed below*).
