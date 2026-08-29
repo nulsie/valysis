@@ -230,7 +230,7 @@ git clone https://github.com/nulsie/valysis.git
 
 ON BUG REPORTING:
 
-If you find any bugs, be sure to [contact](https://nulsie.mywire.org) me so i can discover them faster and push update real-quick.
+If you find any bugs, be sure to [contact](https://nulsie.mywire.org/#comm-links) me so i can discover them faster and push update real-quick.
 
 references & acknowledgments
 
