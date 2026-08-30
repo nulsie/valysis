@@ -75,7 +75,7 @@ Signed versus unsigned range tracking is handled by maintaining both an unsigned
 
 *Safety Net*: If a memory access points to an unknown offset, it safely degrade the read to a topological maximum (`CircularStridedInterval.top` and `TristateBitVector.top`).
 
-Mathematically speaking, these is the processes or theories implemented in the lib:
+Mathematically speaking, these are the processes or theories implemented in the lib:
 
 1. Circular Strided Interval (CSI)
 
