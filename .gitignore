@@ -2,3 +2,4 @@ echo "pyproject.toml" >> .gitignore
 echo "*.env" >> .gitignore
 echo "*.ini" >> .gitignore
 echo "config.json" >> .gitignore
+pyproject.toml
