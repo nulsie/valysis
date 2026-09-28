@@ -267,6 +267,8 @@ git clone https://github.com/nulsie/valysis.git
 
 ```
 
+*you can also download the tar.gz, .whl and source files from the Releases, but i don't really recommend that:/*
+
 ON BUG REPORTING:
 
 If you find any bugs, be sure to [contact](https://nulsie.mywire.org/#comm-links) me so i can discover them faster and push update real-quick.
@@ -275,6 +277,8 @@ references & acknowledgments
 
 * **Hacker's Delight (2nd Edition)** by Henry S. Warren, Jr. — The bitwise bounds algorithms for bitwise `AND` and `OR` operations (`_hd_min_and`, `_hd_max_and`, `_hd_min_or`, `_hd_max_or`) used in `CircularStridedInterval` are based on the logical operations theorems in Chapter 4.
 * **G. Balakrishnan and T. Reps** — *Analyzing Memory Accesses in x86 Executables* (The foundational paper introducing Value Set Analysis and Circular Strided Intervals).
+
+*Note: there are currently 4 branches in the valysis repo, and new versions and all updates(through the tagging system as the branching method gas made me spin my head) would be done in the* `main` *from now onwards and the other branches has become obsolete.*
 
 ---
 
