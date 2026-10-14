@@ -377,11 +377,13 @@ class VSAReducedState:
         t1, t2 = self.tristate.assume_ult(other.tristate)
         return VSAReducedState(i1, t1), VSAReducedState(i2, t2)
 
+    # (v1.1.2) patch: assume_slt has been updated to call the new slt method in tbv
     def assume_slt(
         self, other: "VSAReducedState"
     ) -> tuple["VSAReducedState", "VSAReducedState"]:
         i1, i2 = self.interval.assume_slt(other.interval)
-        return VSAReducedState(i1, self.tristate), VSAReducedState(i2, other.tristate)
+        t1, t2 = self.tristate.assume_slt(other.tristate)
+        return VSAReducedState(i1, t1), VSAReducedState(i2, t2)
 
     def __or__(self, other: "VSAReducedState") -> "VSAReducedState":
         res_csi = self.interval | other.interval

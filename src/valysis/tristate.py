@@ -111,7 +111,7 @@ class TristateBitVector:
 
         new_mask = (1 << new_bits) - 1
         high_zeros = new_mask ^ self.mask
-
+ 
         return self.__class__(new_bits, self.ones, self.zeros | high_zeros)
 
     def sign_extend(self, new_bits: int) -> "TristateBitVector":
@@ -206,6 +206,28 @@ class TristateBitVector:
             return refined_self, other
 
         return self, other
+
+    # (v1.1.2) patch: slt lose all bit-level tristate precision, leading to looser abstract states than necessary so i added an assume_slt method to tbv (using the same domain-shifting tech used for intervals) and then update VSAReducedState.assume_slt to call it
+    def assume_slt(
+        self, other: "TristateBitVector"
+    ) -> tuple["TristateBitVector", "TristateBitVector"]:
+        if self.is_empty or other.is_empty:
+            return self.empty(self.bits), other.empty(other.bits)
+    
+        sign_bit_val = 1 << (self.bits - 1)
+        offset_tbv = self.value(sign_bit_val, self.bits)
+    
+        # shift signed domain into an unsigned equivalent domain [0, 2^bits - 1]
+        u_self = self + offset_tbv
+        u_other = other + offset_tbv
+    
+        ref_u_self, ref_u_other = u_self.assume_ult(u_other)
+    
+        # shift back to the signed domain
+        ref_s_self = ref_u_self + offset_tbv
+        ref_s_other = ref_u_other + offset_tbv
+    
+        return ref_s_self, ref_s_other
 
     def join(self, other: "TristateBitVector") -> "TristateBitVector":
         if self.is_empty:
