@@ -12,6 +12,8 @@ as the name suggests, this is a file where changes are logged :3
 
 - memory state weak/strong update slice interleaving inconsistency
 
+- a division-by-zero surviving state type mismatch in `signed_floordiv` 
+
 ## [v1.1.1] - 2026-09-28
 
 ### Added

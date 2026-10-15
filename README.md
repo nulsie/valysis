@@ -267,7 +267,7 @@ git clone https://github.com/nulsie/valysis.git
 
 ```
 
-*you can also download the tar.gz, .whl and source files from the Releases, but i don't really recommend that:/*
+*you can also download the tar.gz, .whl and source files from the Releases, but i don't really recommend that* :/
 
 ON BUG REPORTING:
 
