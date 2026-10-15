@@ -2,6 +2,12 @@
 
 as the name suggests, this is a file where changes are logged :3
 
+## [v1.1.2] - 2026-10-15
+
+### Fixed
+
+- `VSAReducedState.assume_slt` ignores Tristate refinement
+
 ## [v1.1.1] - 2026-09-28
 
 ### Added
