@@ -126,13 +126,18 @@ class DualInterval:
     def signed_floordiv(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
             return self.empty(self.bits)
-
+    
         try:
             res_u = self.u_domain.signed_floordiv(other.u_domain)
             res_s = self.s_domain.signed_floordiv(other.s_domain)
             return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
         except VSADivisionByZero as e:
-            surviving = DualInterval(e.surviving_state).synchronize()
+            surviving_u = e.surviving_state
+            # (v1.1.2) patch: explicitly derive the biased signed view for the signed division surviving state
+            surviving_s = self._shift_domain(surviving_u, self.sign_bit)
+            surviving = DualInterval(
+                surviving_u, surviving_s, _is_synced=False, _is_biased=True
+            ).synchronize()
             raise VSADivisionByZero(e.args[0], surviving)
 
     def __and__(self, other: "DualInterval") -> "DualInterval":
