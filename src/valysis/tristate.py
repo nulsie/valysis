@@ -188,23 +188,25 @@ class TristateBitVector:
     ) -> tuple["TristateBitVector", "TristateBitVector"]:
         if self.is_empty or other.is_empty:
             return self.empty(self.bits), other.empty(other.bits)
-
+    
         _, b_max = other.get_min_max()
-
+    
         if b_max == 0:
-
             return self.empty(self.bits), other
-
+    
         a_max_possible = b_max - 1
-
+    
         leading_zeros_mask = self.mask & ~((1 << a_max_possible.bit_length()) - 1)
-
+    
         if leading_zeros_mask != 0:
-
+            # (v1.1.2) patch: prevent invalid state if bits it's forcing to 0 are already known to be 1
+            if (self.ones & leading_zeros_mask) != 0:
+                return self.empty(self.bits), other.empty(other.bits)
+    
             n_zeros = self.zeros | leading_zeros_mask
             refined_self = self.__class__(self.bits, self.ones, n_zeros)
             return refined_self, other
-
+    
         return self, other
 
     # (v1.1.2) patch: slt lose all bit-level tristate precision, leading to looser abstract states than necessary so i added an assume_slt method to tbv (using the same domain-shifting tech used for intervals) and then update VSAReducedState.assume_slt to call it
