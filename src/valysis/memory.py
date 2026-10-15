@@ -388,7 +388,8 @@ class MemoryState:
                 for i in range(size):
                     target_byte_off = (off + i) & self.addr_mask
                     slice_val = byte_slices[i]
-    
+
+                    # (v1.1.2) patch: fixing the s/w update slice inconsistency
                     if is_strong_update:
                         # uniform strong update: completely overwrite byte with slice_val
                         self.memory[reg][target_byte_off] = slice_val

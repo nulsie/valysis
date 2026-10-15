@@ -8,6 +8,10 @@ as the name suggests, this is a file where changes are logged :3
 
 - `VSAReducedState.assume_slt` ignores Tristate refinement
 
+- `TristateBitVector.assume_ult` missing emptiness check on high-bit masking
+
+- memory state weak/strong update slice interleaving inconsistency
+
 ## [v1.1.1] - 2026-09-28
 
 ### Added
