@@ -53,14 +53,12 @@ class ValueSet:
 
     @classmethod
     def absolute(cls, state: VSAReducedState) -> "ValueSet":
-        """Creates a pure scalar integer Value-Set."""
         if state.is_empty:
             return cls.empty(state.bits)
         return cls(state.bits, {AbsoluteRegion: state})
 
     @classmethod
     def pointer(cls, region: MemoryRegion, offset_state: VSAReducedState) -> "ValueSet":
-        """Creates a pointer Value-Set to a specific memory region."""
         if offset_state.is_empty:
             return cls.empty(offset_state.bits)
         return cls(offset_state.bits, {region: offset_state})
@@ -322,7 +320,6 @@ class MemoryState:
         return offsets
 
     def _get_taint_ranges(self, csi: CircularStridedInterval, write_size: int) -> List[Tuple[int, int]]:
-        """Calculates the absolute bounding boxes for a symbolic write."""
         ranges = []
         if csi.lower <= csi.upper:
             u = csi.upper + write_size - 1
@@ -341,36 +338,33 @@ class MemoryState:
     def store(self, address: "ValueSet", value: "ValueSet", size: int, endian: str = "little"):
         byte_slices = None
         is_single_region = (len(address.regions) == 1)
-    
+        
         for reg, state in address.regions.items():
             offsets = self._get_concrete_offsets(state)
-                
+                    
             if offsets is None:
                 # OPTIM: hierarchical chunk tainting
-                # avoids O(N) loops over existing tracked offsets.
                 top_byte = ValueSet.absolute(VSAReducedState(
                     CircularStridedInterval.top(8),
                     TristateBitVector.top(8)
                 ))
-                
+                    
                 ranges = self._get_taint_ranges(state.interval, size)
-                
+                    
                 if reg not in self.chunk_taints:
                     self.chunk_taints[reg] = {}
-                    
+                        
                 for start, end in ranges:
                     start_chunk = start >> self.CHUNK_SHIFT
                     end_chunk = end >> self.CHUNK_SHIFT
-                    
+                        
                     if (end_chunk - start_chunk) > self.MAX_CHUNKS_PER_TAINT:
-                        # fallback to O(1) region-wide taint if completely unbounded
                         existing_region_taint = self.region_taints.get(reg)
                         if existing_region_taint:
                             self.region_taints[reg] = existing_region_taint.union(top_byte)
                         else:
                             self.region_taints[reg] = top_byte
                     else:
-                        # apply O(1) chunk taints
                         for c in range(start_chunk, end_chunk + 1):
                             existing_chunk = self.chunk_taints[reg].get(c)
                             if existing_chunk:
@@ -378,49 +372,43 @@ class MemoryState:
                             else:
                                 self.chunk_taints[reg][c] = top_byte
                 continue
-    
+        
             is_strong_update = is_single_region and (len(offsets) == 1)
-    
+        
+            if byte_slices is None:
+                byte_slices = []
+                for i in range(size):
+                    low = i * 8 if endian == "little" else (size - 1 - i) * 8
+                    byte_slices.append(value.extract(low + 7, low))
+        
             for off in offsets:
                 if reg not in self.memory:
                     self.memory[reg] = {}
-                        
-                if is_strong_update:
-                    for i in range(size):
-                        target_byte_off = (off + i) & self.addr_mask
-                        self.memory[reg][target_byte_off] = (value, size, i, endian)
-                else:
-                    if byte_slices is None:
-                        byte_slices = []
-                        for i in range(size):
-                            low = i * 8 if endian == "little" else (size - 1 - i) * 8
-                            byte_slices.append(value.extract(low + 7, low))
+                            
+                for i in range(size):
+                    target_byte_off = (off + i) & self.addr_mask
+                    slice_val = byte_slices[i]
     
-                    for i in range(size):
-                        target_byte_off = (off + i) & self.addr_mask
-                        slice_val = byte_slices[i]
-    
+                    if is_strong_update:
+                        # uniform strong update: completely overwrite byte with slice_val
+                        self.memory[reg][target_byte_off] = slice_val
+                    else:
+                        # uniform weak update: union with existing byte ValueSet if present
                         existing = self.memory[reg].get(target_byte_off)
                         if existing is not None:
-                            if isinstance(existing, tuple):
-                                e_val, e_size, e_idx, e_endian = existing
-                                e_low = e_idx * 8 if e_endian == "little" else (e_size - 1 - e_idx) * 8
-                                existing_val = e_val.extract(e_low + 7, e_low)
-                            else:
-                                existing_val = existing
-                            self.memory[reg][target_byte_off] = existing_val.union(slice_val)
+                            self.memory[reg][target_byte_off] = existing.union(slice_val)
                         else:
                             self.memory[reg][target_byte_off] = slice_val
-
+    
     def load(self, address: "ValueSet", size: int, endian: str = "little") -> "ValueSet":
         if address.is_empty:
             return ValueSet.empty(size * 8)
-
+    
         result_val = ValueSet.empty(size * 8)
-
+    
         for reg, state in address.regions.items():
             offsets = self._get_concrete_offsets(state)
-
+    
             if offsets is None:
                 top_val = ValueSet.absolute(
                     VSAReducedState(
@@ -430,87 +418,34 @@ class MemoryState:
                 )
                 result_val = result_val.union(top_val)
                 continue
-
+    
             for off in offsets:
                 slices = []
-                i = 0
-
-                while i < size:
+                for i in range(size):
                     target_byte_off = (off + i) & self.addr_mask
                     entry = self.memory.get(reg, {}).get(target_byte_off)
-
+    
                     # extract chunk and region taints dynamically
                     c_idx = target_byte_off >> self.CHUNK_SHIFT
                     chunk_taint = self.chunk_taints.get(reg, {}).get(c_idx)
                     region_taint = self.region_taints.get(reg)
-
-                    if isinstance(entry, tuple):
-                        e_val, e_size, e_idx, e_endian = entry
-
-                        if e_endian == endian:
-                            run_len = 1
-                            while (i + run_len) < size:
-                                nxt_off = (off + i + run_len) & self.addr_mask
-                                nxt_entry = self.memory.get(reg, {}).get(nxt_off)
-                                if (
-                                    isinstance(nxt_entry, tuple)
-                                    and nxt_entry[0] is e_val
-                                    and nxt_entry[1] == e_size
-                                    and nxt_entry[3] == e_endian
-                                    and nxt_entry[2] == e_idx + run_len
-                                ):
-                                    run_len += 1
-                                else:
-                                    break
-
-                            if e_endian == "little":
-                                low_bit = e_idx * 8
-                                high_bit = (e_idx + run_len) * 8 - 1
-                            else:
-                                low_bit = (e_size - e_idx - run_len) * 8
-                                high_bit = (e_size - 1 - e_idx) * 8 + 7
-
-                            extracted_slice = e_val.extract(high_bit, low_bit)
-                            
-                            # apply taints to the multi-byte vector slice if any sub-byte overlaps a taint
-                            has_taint = region_taint is not None
-                            if not has_taint:
-                                for j in range(run_len):
-                                    sub_c_idx = ((off + i + j) & self.addr_mask) >> self.CHUNK_SHIFT
-                                    if sub_c_idx in self.chunk_taints.get(reg, {}):
-                                        has_taint = True
-                                        break
-                                        
-                            if has_taint:
-                                top_slice = ValueSet.absolute(VSAReducedState(
-                                    CircularStridedInterval.top(run_len * 8),
-                                    TristateBitVector.top(run_len * 8)
-                                ))
-                                extracted_slice = extracted_slice.union(top_slice)
-
-                            slices.append(extracted_slice)
-                            i += run_len
-                            continue
-
-                        e_low = e_idx * 8 if e_endian == "little" else (e_size - 1 - e_idx) * 8
-                        resolved_byte = e_val.extract(e_low + 7, e_low)
-                    elif entry is not None:
+    
+                    if entry is not None:
                         resolved_byte = entry
                     else:
                         resolved_byte = ValueSet.absolute(VSAReducedState(
                             CircularStridedInterval.top(8),
                             TristateBitVector.top(8)
                         ))
-
-                    # apply chunk and region taints to single-byte resolution
+    
+                    # apply chunk and region taints
                     if region_taint:
                         resolved_byte = resolved_byte.union(region_taint)
                     if chunk_taint:
                         resolved_byte = resolved_byte.union(chunk_taint)
-
+    
                     slices.append(resolved_byte)
-                    i += 1
-
+    
                 if endian == "little":
                     reconstructed = slices[0]
                     for s in slices[1:]:
@@ -519,9 +454,9 @@ class MemoryState:
                     reconstructed = slices[0]
                     for s in slices[1:]:
                         reconstructed = reconstructed.concat(s)
-
+    
                 result_val = result_val.union(reconstructed)
-
+    
         return result_val
 
     def __repr__(self):
