@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "valysis"
-version = "1.1.1"
+version = "1.1.2"
 description = "A platform/hardware agnostic Value Set Analysis (VSA) library for Reverse Engineering tools."
 readme = "README.md"
 requires-python = ">=3.9"
