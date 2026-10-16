@@ -240,6 +240,10 @@ Addition(s)
 
 * Hierarchical memory tainting (The "chunk" model) for optimization, i refactored the `MemoryState` for this
 
+### v1.1.2
+
+A minor patch release, which fixes some subtle latent bugs, precision leaks and edge case vulns across modules. For details, refer to the Changelog.
+
 ---
 
 installing it:
