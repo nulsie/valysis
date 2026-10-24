@@ -8,6 +8,8 @@ as the name suggests, this is a file where changes are logged :3
 
 - chunk tainting granularity & over-approximation(`memory.py`)
 
+- hybrid set intersection logic prone to bitwise mismatch(`product.py`)
+
 ## [v1.1.2] - 2026-10-15
 
 ### Fixed
