@@ -154,17 +154,18 @@ class HybridSetDomain:
         res_abs = self.to_abstract().union(other.to_abstract())
         return HybridSetDomain(self.bits, self.max_cardinality, abstract_state=res_abs)
 
+    # (v1.1.3) fix: now the hybrid set intersect uses a more nimble and robust logic instead of the former dense bitwise check, this new logic prevents the potential bitwise mismatches
     def intersect(self, other: "HybridSetDomain") -> "HybridSetDomain":
         if self.is_empty or other.is_empty:
             return self.empty(self.bits, self.max_cardinality)
-
+    
         if self.discrete_set is not None and other.discrete_set is not None:
             return HybridSetDomain(
                 self.bits,
                 self.max_cardinality,
                 discrete_set=self.discrete_set & other.discrete_set,
             )
-
+    
         if self.discrete_set is not None:
             abs_other = other.to_abstract()
             filtered = {
@@ -172,18 +173,15 @@ class HybridSetDomain:
                 for v in self.discrete_set
                 if abs_other.interval.contains(v)
                 and ((v & abs_other.tristate.ones) == abs_other.tristate.ones)
-                and (
-                    (~v & abs_other.tristate.zeros)
-                    == (abs_other.tristate.zeros & self.mask)
-                )
+                and ((v & abs_other.tristate.zeros) == 0) # new logic(v1.1.3)
             }
             return HybridSetDomain(
                 self.bits, self.max_cardinality, discrete_set=filtered
             )
-
+    
         if other.discrete_set is not None:
             return other.intersect(self)
-
+    
         a_abs, b_abs = self.to_abstract(), other.to_abstract()
         res_csi = a_abs.interval.intersect(b_abs.interval)
         res_tbv = a_abs.tristate & b_abs.tristate
