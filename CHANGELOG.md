@@ -1,6 +1,12 @@
-# Changelog
+# changelog
 
 as the name suggests, this is a file where changes are logged :3
+
+## [v1.1.3] - 2026-10-26
+
+### Fixed
+
+- chunk tainting granularity & over-approximation(`memory.py`)
 
 ## [v1.1.2] - 2026-10-15
 
