@@ -10,6 +10,10 @@ as the name suggests, this is a file where changes are logged :3
 
 - hybrid set intersection logic prone to bitwise mismatch(`product.py`)
 
+### Changed
+
+- refactored the `__mul__` in `tristate.py` to use an optimized method of 64-bit multiplication than the former of iterating bit-by-bit
+
 ## [v1.1.2] - 2026-10-15
 
 ### Fixed
