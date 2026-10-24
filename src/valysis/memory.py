@@ -335,29 +335,30 @@ class MemoryState:
             ranges.append((0, u & self.addr_mask))
         return ranges
 
+    # (v1.1.3) fix: to prevent unconstrained writes on MemoryState from blanket-tainting entire 256-byte chunks(which causes over-approximation), i have added a new hybrid sub-chunk byte tracking for dat
     def store(self, address: "ValueSet", value: "ValueSet", size: int, endian: str = "little"):
         byte_slices = None
         is_single_region = (len(address.regions) == 1)
-        
+            
         for reg, state in address.regions.items():
             offsets = self._get_concrete_offsets(state)
-                    
+                        
             if offsets is None:
-                # OPTIM: hierarchical chunk tainting
+                # OPTIM: granular(v1.1.3) hierarchical chunk tainting
                 top_byte = ValueSet.absolute(VSAReducedState(
                     CircularStridedInterval.top(8),
                     TristateBitVector.top(8)
                 ))
-                    
+                        
                 ranges = self._get_taint_ranges(state.interval, size)
-                    
+                        
                 if reg not in self.chunk_taints:
                     self.chunk_taints[reg] = {}
-                        
+                            
                 for start, end in ranges:
                     start_chunk = start >> self.CHUNK_SHIFT
                     end_chunk = end >> self.CHUNK_SHIFT
-                        
+                            
                     if (end_chunk - start_chunk) > self.MAX_CHUNKS_PER_TAINT:
                         existing_region_taint = self.region_taints.get(reg)
                         if existing_region_taint:
@@ -366,50 +367,86 @@ class MemoryState:
                             self.region_taints[reg] = top_byte
                     else:
                         for c in range(start_chunk, end_chunk + 1):
-                            existing_chunk = self.chunk_taints[reg].get(c)
-                            if existing_chunk:
-                                self.chunk_taints[reg][c] = existing_chunk.union(top_byte)
+                            c_start_addr = c << self.CHUNK_SHIFT
+                            c_end_addr = c_start_addr + (1 << self.CHUNK_SHIFT) - 1
+                                
+                            # decide exact byte overlap within chunk c
+                            overlap_start = max(start, c_start_addr)
+                            overlap_end = min(end, c_end_addr)
+                                
+                            if overlap_start > overlap_end:
+                                continue
+                                    
+                            is_full_chunk = (overlap_start == c_start_addr and overlap_end == c_end_addr)
+                                
+                            if reg not in self.chunk_taints:
+                                self.chunk_taints[reg] = {}
+                                    
+                            existing = self.chunk_taints[reg].get(c)
+                                
+                            if is_full_chunk:
+                                # upgrade or set to monolithic(the old one) chunk-wide taint
+                                if existing is None or isinstance(existing, dict):
+                                    self.chunk_taints[reg][c] = top_byte
+                                else:
+                                    self.chunk_taints[reg][c] = existing.union(top_byte)
                             else:
-                                self.chunk_taints[reg][c] = top_byte
+                                # partial chunk taint: use sub-chunk byte dictionary
+                                if existing is None:
+                                    sub_dict = {}
+                                    for addr in range(overlap_start, overlap_end + 1):
+                                        loc_off = addr & ((1 << self.CHUNK_SHIFT) - 1)
+                                        sub_dict[loc_off] = top_byte
+                                    self.chunk_taints[reg][c] = sub_dict
+                                elif isinstance(existing, dict):
+                                    for addr in range(overlap_start, overlap_end + 1):
+                                        loc_off = addr & ((1 << self.CHUNK_SHIFT) - 1)
+                                        if loc_off in existing:
+                                            existing[loc_off] = existing[loc_off].union(top_byte)
+                                        else:
+                                            existing[loc_off] = top_byte
+                                    # collapse into full chunk taint if all 256 bytes are now covered
+                                    if len(existing) >= (1 << self.CHUNK_SHIFT):
+                                        self.chunk_taints[reg][c] = top_byte
+                                else:
+                                    # alr fully tainted by chunk-wide taint
+                                    pass
                 continue
-        
+            
             is_strong_update = is_single_region and (len(offsets) == 1)
-        
+            
             if byte_slices is None:
                 byte_slices = []
                 for i in range(size):
                     low = i * 8 if endian == "little" else (size - 1 - i) * 8
                     byte_slices.append(value.extract(low + 7, low))
-        
+            
             for off in offsets:
                 if reg not in self.memory:
                     self.memory[reg] = {}
-                            
+                                
                 for i in range(size):
                     target_byte_off = (off + i) & self.addr_mask
                     slice_val = byte_slices[i]
-
-                    # (v1.1.2) patch: fixing the s/w update slice inconsistency
+    
                     if is_strong_update:
-                        # uniform strong update: completely overwrite byte with slice_val
                         self.memory[reg][target_byte_off] = slice_val
                     else:
-                        # uniform weak update: union with existing byte ValueSet if present
                         existing = self.memory[reg].get(target_byte_off)
                         if existing is not None:
                             self.memory[reg][target_byte_off] = existing.union(slice_val)
                         else:
                             self.memory[reg][target_byte_off] = slice_val
-    
+        
     def load(self, address: "ValueSet", size: int, endian: str = "little") -> "ValueSet":
         if address.is_empty:
             return ValueSet.empty(size * 8)
-    
+        
         result_val = ValueSet.empty(size * 8)
-    
+        
         for reg, state in address.regions.items():
             offsets = self._get_concrete_offsets(state)
-    
+        
             if offsets is None:
                 top_val = ValueSet.absolute(
                     VSAReducedState(
@@ -419,18 +456,27 @@ class MemoryState:
                 )
                 result_val = result_val.union(top_val)
                 continue
-    
+        
             for off in offsets:
                 slices = []
                 for i in range(size):
                     target_byte_off = (off + i) & self.addr_mask
                     entry = self.memory.get(reg, {}).get(target_byte_off)
-    
-                    # extract chunk and region taints dynamically
+        
+                    # extract chunk and region taints dynamically with granular support
                     c_idx = target_byte_off >> self.CHUNK_SHIFT
-                    chunk_taint = self.chunk_taints.get(reg, {}).get(c_idx)
+                    loc_off = target_byte_off & ((1 << self.CHUNK_SHIFT) - 1)
+                        
+                    chunk_entry = self.chunk_taints.get(reg, {}).get(c_idx)
+                    chunk_taint = None
+                    if chunk_entry is not None:
+                        if isinstance(chunk_entry, dict):
+                            chunk_taint = chunk_entry.get(loc_off)
+                        else:
+                            chunk_taint = chunk_entry
+                                
                     region_taint = self.region_taints.get(reg)
-    
+        
                     if entry is not None:
                         resolved_byte = entry
                     else:
@@ -438,15 +484,15 @@ class MemoryState:
                             CircularStridedInterval.top(8),
                             TristateBitVector.top(8)
                         ))
-    
+        
                     # apply chunk and region taints
                     if region_taint:
                         resolved_byte = resolved_byte.union(region_taint)
                     if chunk_taint:
                         resolved_byte = resolved_byte.union(chunk_taint)
-    
+        
                     slices.append(resolved_byte)
-    
+        
                 if endian == "little":
                     reconstructed = slices[0]
                     for s in slices[1:]:
@@ -455,9 +501,9 @@ class MemoryState:
                     reconstructed = slices[0]
                     for s in slices[1:]:
                         reconstructed = reconstructed.concat(s)
-    
+        
                 result_val = result_val.union(reconstructed)
-    
+        
         return result_val
 
     def __repr__(self):
