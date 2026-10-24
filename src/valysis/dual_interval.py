@@ -13,7 +13,10 @@ class DualInterval:
         "s_domain",
         "is_empty",
         "_is_synced",
+        "_op_count",
     )
+
+    SYNC_THRESHOLD = 4  # Automatically sync after 4 chained arithmetic ops to prevent drift
 
     def __init__(
         self,
@@ -21,12 +24,14 @@ class DualInterval:
         s_domain: CircularStridedInterval = None,
         _is_synced: bool = False,
         _is_biased: bool = False,
+        _op_count: int = 0,
     ):
         self.bits = u_domain.bits
         self.mask = u_domain.mask
         self.sign_bit = 1 << (self.bits - 1)
         self.is_empty = u_domain.is_empty
         self._is_synced = _is_synced
+        self._op_count = _op_count
 
         if self.is_empty:
             self.u_domain = u_domain
@@ -80,7 +85,15 @@ class DualInterval:
 
         refined_s = self._shift_domain(refined_u, self.sign_bit)
 
-        return DualInterval(refined_u, refined_s, _is_synced=True, _is_biased=True)
+        # reset op_count back to 0 upon synchronization
+        return DualInterval(refined_u, refined_s, _is_synced=True, _is_biased=True, _op_count=0)
+
+    def _track_op(self, other: "DualInterval", res_u: CircularStridedInterval, res_s: CircularStridedInterval) -> "DualInterval":
+        new_op_count = self._op_count + other._op_count + 1
+        res = DualInterval(res_u, res_s, _is_synced=False, _is_biased=True, _op_count=new_op_count)
+        if new_op_count >= self.SYNC_THRESHOLD:
+            return res.synchronize()
+        return res
 
     def __add__(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
@@ -89,7 +102,7 @@ class DualInterval:
         res_u = self.u_domain + other.u_domain
         res_s = self.s_domain + other.u_domain
 
-        return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
+        return self._track_op(other, res_u, res_s)
 
     def __sub__(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
@@ -98,7 +111,7 @@ class DualInterval:
         res_u = self.u_domain - other.u_domain
         res_s = self._shift_domain(self.s_domain - other.s_domain, self.sign_bit)
 
-        return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
+        return self._track_op(other, res_u, res_s)
 
     def __mul__(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
@@ -110,7 +123,7 @@ class DualInterval:
         res_u = sync_self.u_domain * sync_other.u_domain
         res_s = self._shift_domain(res_u, self.sign_bit)
 
-        return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
+        return self._track_op(other, res_u, res_s)
 
     def __floordiv__(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
