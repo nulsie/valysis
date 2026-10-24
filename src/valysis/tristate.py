@@ -374,30 +374,45 @@ class TristateBitVector:
         return self.__class__(self.bits, result_ones, result_zeros)
 
     # (v1.1.1) fix: here the 0(bitssquare) exec bottleneck is fixed
+    #(v1.1.3) change: in 64-bit mult, instead of making the method iterate through 64 times we make it dat if the multiplier is a known constant, mul can bypass the full 64-iteration loop entirely by using bit manipulation, it jump directly to the active set bits (hamming weight)
     def __mul__(self, other) -> "TristateBitVector":
         if self.is_empty:
             return self
-    
+        
         if not hasattr(other, "ones"):
             other = self.value(int(other), self.bits)
-    
+        
         if other.is_empty:
             return self.empty(self.bits)
-    
-        if other.ones == 0 and other.zeros == self.mask:
+        
+        # early-exit annihilation for zeros
+        if (other.ones == 0 and other.zeros == self.mask) or (self.ones == 0 and self.zeros == self.mask):
             return self.value(0, self.bits)
+        
+        # OPTIM: if 'other' is a known constant, iterate only over set bits (hamming weight)
+        if other.unknown == 0:
+            result = self.value(0, self.bits)
+            val = other.ones & self.mask
+            while val != 0:
+                lsb = val & -val
+                i = lsb.bit_length() - 1
+                shifted_self = self << i
+                result = result + shifted_self
+                val ^= lsb
+            return result
     
+        # general case for unknown/tristate multipliers
         result = self.value(0, self.bits)
-    
+        
         for i in range(self.bits):
             b_1 = (other.ones >> i) & 1
             b_0 = (other.zeros >> i) & 1
-    
+        
             if b_0 and not b_1:
                 continue
-    
+        
             shifted_self = self << i
-    
+        
             if b_1 and not b_0:
                 result = result + shifted_self
             else:
@@ -405,7 +420,7 @@ class TristateBitVector:
                     self.bits, ones=0, zeros=shifted_self.zeros
                 )
                 result = result + unknown_term
-    
+        
         return result
 
     # (v1.1.1)addition: modulo(__mod__) op
