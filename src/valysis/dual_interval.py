@@ -88,6 +88,7 @@ class DualInterval:
         # reset op_count back to 0 upon synchronization
         return DualInterval(refined_u, refined_s, _is_synced=True, _is_biased=True, _op_count=0)
 
+    #(v1.1.3) fix: to prevent precision drift i added an opportunistic sync heuristic, inwhich valysis track an internal operation counter (_op_count) once a threshold is crossed the engine triggers .synchronize(), cross-pollinating intermediate bounds between the signed and unsigned views
     def _track_op(self, other: "DualInterval", res_u: CircularStridedInterval, res_s: CircularStridedInterval) -> "DualInterval":
         new_op_count = self._op_count + other._op_count + 1
         res = DualInterval(res_u, res_s, _is_synced=False, _is_biased=True, _op_count=new_op_count)
