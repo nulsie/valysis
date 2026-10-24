@@ -10,6 +10,8 @@ as the name suggests, this is a file where changes are logged :3
 
 - hybrid set intersection logic prone to bitwise mismatch(`product.py`)
 
+- lazy sync precision drift (`dual_interval.py`)
+
 ### Changed
 
 - refactored the `__mul__` in `tristate.py` to use an optimized method of 64-bit multiplication than the former of iterating bit-by-bit
