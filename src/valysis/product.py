@@ -1,7 +1,7 @@
 import math
 from typing import Set, Optional, Callable
-from .intervals import CircularStridedInterval
-from .tristate import TristateBitVector
+from intervals import CircularStridedInterval
+from tristate import TristateBitVector
 
 
 class HybridSetDomain:

@@ -1,7 +1,7 @@
 import functools
 from typing import TYPE_CHECKING
-from .intervals import CircularStridedInterval
-from .common import VSADivisionByZero
+from intervals import CircularStridedInterval
+from common import VSADivisionByZero
 
 # (v1.1.1) fixed dualinterval signed domain bias initialization and sync immutability
 class DualInterval:

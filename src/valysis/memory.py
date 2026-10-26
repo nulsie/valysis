@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Optional
-from .product import VSAReducedState
-from .intervals import CircularStridedInterval
-from .tristate import TristateBitVector
+from product import VSAReducedState
+from intervals import CircularStridedInterval
+from tristate import TristateBitVector
 
 
 class MemoryRegion:

@@ -1,7 +1,7 @@
 import math
 import functools
 from typing import TYPE_CHECKING
-from .common import VSADivisionByZero, _exgcd
+from common import VSADivisionByZero, _exgcd
 
 
 class CircularStridedInterval:

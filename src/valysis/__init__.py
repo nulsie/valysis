@@ -5,7 +5,7 @@ from .tristate import TristateBitVector
 from .product import VSAReducedState, HybridSetDomain
 from .memory import MemoryRegion, AbsoluteRegion, GlobalRegion, ValueSet, MemoryState
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 __all__ = [
     "VSADivisionByZero",
     "CircularStridedInterval",
