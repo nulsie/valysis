@@ -1,6 +1,6 @@
 valysis - a VSA library for Python
 
-v1.1.2(Stable)
+v1.1.3(Stable)
 
 There is a distinct lack of dedicated VSA(Value Set Analysis) libraries in Python, like literally, there is none. You woud say that
 there are things like angr, but they are not dedicated for VSA, but as large frameworks for building or basing entire RE tools, As i was
@@ -242,7 +242,11 @@ Addition(s)
 
 ### v1.1.2
 
-A minor patch release, which fixes some subtle latent bugs, precision leaks and edge case vulns across modules. For details, refer to the Changelog.
+A minor patch release, which fixes some subtle latent bugs, precision leaks and edge case vulns across modules. For details, refer to the changelog.
+
+### v1.1.3
+
+Minor patch, fixes a potential over approximation bug, precision drift in `DualInterval`, performance bottleneck in 64-bit multiplication and hardening a dense logic in concrete value filtering in HSD. For more, refer to changelog.
 
 ---
 
