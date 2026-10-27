@@ -2,7 +2,7 @@
 
 as the name suggests, this is a file where changes are logged :3
 
-## [v1.1.3] - 2026-10-26
+## [v1.1.3] - 2026-10-27
 
 ### Fixed
 
