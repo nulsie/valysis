@@ -241,3 +241,31 @@ class DualInterval:
             return "⊥"
         sync_self = self.synchronize()
         return f"Dual({sync_self.u_domain.__repr__()})"
+
+    #(v1.1.4) fix: wow again, forgot to add modulo ops in DI till so have added those now(this increases precision)
+    def __mod__(self, other: "DualInterval") -> "DualInterval":
+        if self.is_empty or other.is_empty:
+            return self.empty(self.bits)
+    
+        try:
+            res_u = self.u_domain % other.u_domain
+            return DualInterval(res_u, _is_synced=False)
+        except VSADivisionByZero as e:
+            surviving = DualInterval(e.surviving_state).synchronize()
+            raise VSADivisionByZero(e.args[0], surviving)
+    
+    def signed_mod(self, other: "DualInterval") -> "DualInterval":
+        if self.is_empty or other.is_empty:
+            return self.empty(self.bits)
+    
+        try:
+            res_u = self.u_domain.signed_mod(other.u_domain)
+            res_s = self.s_domain.signed_mod(other.s_domain)
+            return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
+        except VSADivisionByZero as e:
+            surviving_u = e.surviving_state
+            surviving_s = self._shift_domain(surviving_u, self.sign_bit)
+            surviving = DualInterval(
+                surviving_u, surviving_s, _is_synced=False, _is_biased=True
+            ).synchronize()
+            raise VSADivisionByZero(e.args[0], surviving)
