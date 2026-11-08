@@ -465,6 +465,114 @@ class CircularStridedInterval:
     
         return result
 
+    # (v1.1.4) fix: added a signed modulo method(similar to the signed floordiv) for supporting signed remainders emited
+    # without this analysis of neg operands falls back to broad o-a
+    def signed_mod(
+            self: "CircularStridedInterval", other: "CircularStridedInterval"
+        ) -> "CircularStridedInterval":
+            if not isinstance(other, self.__class__):
+                return NotImplemented
+            assert self.bits == other.bits, "Bit-width mismatch during signed modulo"
+    
+            if self.is_empty or other.is_empty:
+                return self.empty(self.bits)
+    
+            if other.lower == 0 and other.upper == 0:
+                raise VSADivisionByZero(
+                    "Guaranteed signed modulo by zero vulnerability.",
+                    self.empty(self.bits),
+                )
+    
+            result = self.empty(self.bits)
+            has_zero_div = other.contains(0)
+            sign_bit_val = 1 << (self.bits - 1)
+    
+            def to_signed(val: int) -> int:
+                return val - (1 << self.bits) if val >= sign_bit_val else val
+    
+            def trunc_div(n: int, d: int) -> int:
+                sign = -1 if (n < 0) ^ (d < 0) else 1
+                return sign * (abs(n) // abs(d))
+    
+            def signed_rem(n: int, d: int) -> int:
+                return n - trunc_div(n, d) * d
+    
+            def split_signed(
+                interval: "CircularStridedInterval",
+            ) -> list["CircularStridedInterval"]:
+                sub_parts = []
+                for p in interval.split_if_wrapped():
+                    if p.lower < sign_bit_val and p.upper >= sign_bit_val:
+                        pos_upper = sign_bit_val - 1
+                        dist_to_max_pos = pos_upper - p.lower
+                        aligned_pos_upper = p.lower + (
+                            dist_to_max_pos - (dist_to_max_pos % p.stride)
+                        )
+                        sub_parts.append(
+                            self.__class__(
+                                p.stride, p.lower, aligned_pos_upper, interval.bits
+                            )
+                        )
+    
+                        dist = sign_bit_val - p.lower
+                        rem = dist % p.stride
+                        neg_lower = (
+                            sign_bit_val if rem == 0 else sign_bit_val + (p.stride - rem)
+                        )
+                        if neg_lower <= p.upper:
+                            sub_parts.append(
+                                self.__class__(p.stride, neg_lower, p.upper, interval.bits)
+                            )
+                    else:
+                        sub_parts.append(p)
+                return sub_parts
+    
+            for sp1 in split_signed(self):
+                for sp2 in split_signed(other):
+                    sp2_lower = sp2.lower
+    
+                    if sp2_lower == 0:
+                        has_zero_div = True
+                        if sp2.stride == 0:
+                            continue
+                        sp2_lower = sp2.stride
+                        if sp2.upper < sp2_lower:
+                            continue
+    
+                    n_min_signed = to_signed(sp1.lower)
+                    n_max_signed = to_signed(sp1.upper)
+                    d_min_signed = to_signed(sp2_lower)
+                    d_max_signed = to_signed(sp2.upper)
+    
+                    candidates = (
+                        signed_rem(n_min_signed, d_min_signed),
+                        signed_rem(n_min_signed, d_max_signed),
+                        signed_rem(n_max_signed, d_min_signed),
+                        signed_rem(n_max_signed, d_max_signed),
+                    )
+    
+                    s_lower = min(candidates)
+                    s_upper = max(candidates)
+    
+                    n_lower = s_lower & self.mask
+                    n_upper = s_upper & self.mask
+    
+                    if sp2.stride == 0 and sp2.lower == sp2.upper and sp2.lower != 0:
+                        abs_div = abs(d_min_signed)
+                        n_stride = math.gcd(sp1.stride, abs_div)
+                    else:
+                        n_stride = 1
+    
+                    mod_part = self.__class__(n_stride, n_lower, n_upper, self.bits)
+                    result = result.union(mod_part)
+    
+            if has_zero_div:
+                raise VSADivisionByZero(
+                    "Potential signed modulo by zero vulnerability.", result
+                )
+    
+            return result
+
     def __invert__(self: "CircularStridedInterval") -> "CircularStridedInterval":
         if self.is_empty:
             return self
