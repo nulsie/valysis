@@ -465,3 +465,24 @@ class VSAReducedState:
         res_csi = self.interval.intersect(other.interval)
         res_tbv = self.tristate.intersect(other.tristate)
         return VSAReducedState(res_csi, res_tbv)
+
+    # (v1.1.4) fix: damn i rly forgot to add modulo method for VRS till now, so both the u-mod and s-mod methods are added
+    def __mod__(self, other) -> "VSAReducedState":
+        if isinstance(other, VSAReducedState):
+            res_csi = self.interval % other.interval
+            res_tbv = self.tristate % other.tristate
+        else:
+            other_val = int(other)
+            res_csi = self.interval % CircularStridedInterval.value(other_val, self.bits)
+            res_tbv = self.tristate % TristateBitVector.value(other_val, self.bits)
+        return VSAReducedState(res_csi, res_tbv)
+    
+    def signed_mod(self, other) -> "VSAReducedState":
+        if isinstance(other, VSAReducedState):
+            res_csi = self.interval.signed_mod(other.interval)
+            res_tbv = self.tristate.signed_mod(other.tristate)
+        else:
+            other_val = int(other)
+            res_csi = self.interval.signed_mod(CircularStridedInterval.value(other_val, self.bits))
+            res_tbv = self.tristate.signed_mod(TristateBitVector.value(other_val, self.bits))
+        return VSAReducedState(res_csi, res_tbv)
