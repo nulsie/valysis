@@ -2,6 +2,16 @@
 
 as the name suggests, this is a file where changes are logged :3
 
+## [v1.1.4] - 2026-11-13
+
+### Fixed
+
+- added signed modulo methods for supporting signed modulo tracking in `CircularStridedInterval`, `TristateBitVectors`, `VSAReducedState`, `DualInterval`
+
+- added missing modulo methods for `DualIntervals` and `VSAReducedState`
+
+### Changed
+
 ## [v1.1.3] - 2026-10-27
 
 ### Fixed
