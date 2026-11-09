@@ -26,6 +26,23 @@ class MemoryRegion:
 AbsoluteRegion = MemoryRegion("Absolute", is_absolute=True)
 GlobalRegion = MemoryRegion("Global")
 
+# (v1.1.4) fix: added a parameterized StackRegion class to properly model function stack frames and local variables 
+# without causing false alias collisions or collapsing stack-relative pointers into global/absolute states
+class StackRegion(MemoryRegion):
+    __slots__ = ("func_name", "frame_id")
+
+    def __init__(self, func_name: str, frame_id: int = 0):
+        super().__init__(f"Stack[{func_name}#{frame_id}]", is_absolute=False)
+        self.func_name = func_name
+        self.frame_id = frame_id
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.func_name, self.frame_id))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, StackRegion):
+            return False
+        return self.func_name == other.func_name and self.frame_id == other.frame_id
 
 class ValueSet:
     __slots__ = ("bits", "regions", "is_empty")
@@ -61,6 +78,16 @@ class ValueSet:
     def pointer(cls, region: MemoryRegion, offset_state: VSAReducedState) -> "ValueSet":
         if offset_state.is_empty:
             return cls.empty(offset_state.bits)
+        return cls(offset_state.bits, {region: offset_state})
+
+    # (v1.1.4) with this class, can easily instantiate stack-relative pointers
+    @classmethod
+    def stack_pointer(
+        cls, func_name: str, offset_state: VSAReducedState, frame_id: int = 0
+    ) -> "ValueSet":
+        if offset_state.is_empty:
+            return cls.empty(offset_state.bits)
+        region = StackRegion(func_name, frame_id)
         return cls(offset_state.bits, {region: offset_state})
 
     def __add__(self, other: "ValueSet") -> "ValueSet":
