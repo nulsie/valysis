@@ -1184,42 +1184,45 @@ class CircularStridedInterval:
 
         return self, other
 
+    # (v1.1.4) fix: hardened assumptions by applying defensive bounds checking b-w safe mask calc
     def assume_ult(
         self: "CircularStridedInterval", other: "CircularStridedInterval"
     ) -> tuple["CircularStridedInterval", "CircularStridedInterval"]:
         if self.is_empty or other.is_empty:
             return self.empty(self.bits), self.empty(self.bits)
-
+    
         self_res = self.empty(self.bits)
         other_res = self.empty(self.bits)
-
+    
         for p1 in self.split_if_wrapped():
             for p2 in other.split_if_wrapped():
-
+    
                 if p1.lower >= p2.upper:
                     continue
-
+    
                 p1_upper = min(p1.upper, p2.upper - 1)
-
-                dist = p1_upper - p1.lower
+    
+                dist = (p1_upper - p1.lower) & self.mask
                 if p1.stride > 0:
-                    p1_upper = p1.lower + (dist - (dist % p1.stride))
-
-                if p1_upper >= p1.lower:
+                    aligned_dist = dist - (dist % p1.stride)
+                    p1_upper = (p1.lower + aligned_dist) & self.mask
+    
+                if p1.lower <= p1_upper or (p1.stride == 0 and p1.lower == p1_upper):
                     self_res = self_res.union(
                         self.__class__(p1.stride, p1.lower, p1_upper, self.bits)
                     )
-
+    
                 p2_lower = max(p2.lower, p1.lower + 1)
-                dist = p2.upper - p2_lower
+                dist_p2 = (p2.upper - p2_lower) & self.mask
                 if p2.stride > 0:
-                    p2_lower = p2.upper - (dist - (dist % p2.stride))
-
+                    aligned_dist_p2 = dist_p2 - (dist_p2 % p2.stride)
+                    p2_lower = (p2.upper - aligned_dist_p2) & self.mask
+    
                 if p2_lower <= p2.upper:
                     other_res = other_res.union(
                         self.__class__(p2.stride, p2_lower, p2.upper, self.bits)
                     )
-
+    
         return self_res, other_res
 
     def assume_slt(
