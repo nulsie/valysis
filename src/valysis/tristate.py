@@ -188,15 +188,21 @@ class TristateBitVector:
     ) -> tuple["TristateBitVector", "TristateBitVector"]:
         if self.is_empty or other.is_empty:
             return self.empty(self.bits), other.empty(other.bits)
-    
+        
         _, b_max = other.get_min_max()
-    
+        
         if b_max == 0:
             return self.empty(self.bits), other
-    
-        a_max_possible = b_max - 1
-    
-        leading_zeros_mask = self.mask & ~((1 << a_max_possible.bit_length()) - 1)
+        
+        a_max_possible = min(b_max - 1, self.mask)
+        
+        # (v1.1.4) fix: hardened bit-width safe mask calculation (avoiding python infinite precision negative `~` traps)
+        if a_max_possible <= 0:
+            leading_zeros_mask = self.mask
+        else:
+            msb = a_max_possible.bit_length()
+            # Restrict the NOT mask strictly to self.bits width using & self.mask
+            leading_zeros_mask = self.mask & ~((1 << msb) - 1)
     
         if leading_zeros_mask != 0:
             # (v1.1.2) patch: prevent invalid state if bits it's forcing to 0 are already known to be 1
