@@ -10,6 +10,10 @@ as the name suggests, this is a file where changes are logged :3
 
 - added missing modulo methods for `DualIntervals` and `VSAReducedState`
 
+- introduced a `StackRegion` method to properly model function stack frames and local variables without causing false alias collisions or collapsing stack-relative pointers into global/absolute states
+
+- hardened the relational assumptions(`assume_ult`,`assume_slt`) in CSI and TBV to prevent extreme wrapping intervals, sparse strides, and Python's infinite-precision negative bitwise (~) evaluation traps
+
 ### Changed
 
 ## [v1.1.3] - 2026-10-27
