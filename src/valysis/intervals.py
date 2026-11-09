@@ -1228,6 +1228,11 @@ class CircularStridedInterval:
     def assume_slt(
         self: "CircularStridedInterval", other: "CircularStridedInterval"
     ) -> tuple["CircularStridedInterval", "CircularStridedInterval"]:
+        if self.is_empty or other.is_empty:
+            return self.empty(self.bits), self.empty(self.bits) # (v1.1.4) fix: think i hardened this a bit by adding the
+                                                                # initial guard which short circuits transformation rather 
+                                                                # than running expensive domain shifts on empty objects
+                
         sign_bit_val = 1 << (self.bits - 1)
 
         def shift_domain(
