@@ -215,6 +215,24 @@ class TristateBitVector:
     
         return self, other
 
+    # (v1.1.4) fix: for hardening assume_slt added this _add_constant this calculates exact carried bounds for a known constant without usual over-approximation
+    def _add_constant(self, offset: int) -> "TristateBitVector":
+        if self.is_empty:
+            return self
+        offset = offset & self.mask
+            
+        # compute exact min and max shifted bounds for a known constant offset
+        min_val = (self.ones + offset) & self.mask
+        max_val = ((self.ones | self.unknown) + offset) & self.mask
+            
+        # bit is unknown if carry propagation flipped it between min and max
+        # or if it was already unknown in the original bitvector
+        res_unknown = (min_val ^ max_val) | self.unknown
+        res_ones = min_val & ~res_unknown
+        res_zeros = ~(res_ones | res_unknown) & self.mask
+            
+        return self.__class__(self.bits, res_ones, res_zeros)
+
     # (v1.1.2) patch: slt lose all bit-level tristate precision, leading to looser abstract states than necessary so i added an assume_slt method to tbv (using the same domain-shifting tech used for intervals) and then update VSAReducedState.assume_slt to call it
     def assume_slt(
         self, other: "TristateBitVector"
@@ -223,18 +241,18 @@ class TristateBitVector:
             return self.empty(self.bits), other.empty(other.bits)
     
         sign_bit_val = 1 << (self.bits - 1)
-        offset_tbv = self.value(sign_bit_val, self.bits)
-    
-        # shift signed domain into an unsigned equivalent domain [0, 2^bits - 1]
-        u_self = self + offset_tbv
-        u_other = other + offset_tbv
-    
+
+        # shift signed domain into an unsigned equivalent domain [0, 2^bits - 1] 
+        # (v1.1.4) fix: hardened using precise constant-offset adjustment (avoiding swar loss)
+        u_self = self._add_constant(sign_bit_val)
+        u_other = other._add_constant(sign_bit_val)
+            
         ref_u_self, ref_u_other = u_self.assume_ult(u_other)
-    
-        # shift back to the signed domain
-        ref_s_self = ref_u_self + offset_tbv
-        ref_s_other = ref_u_other + offset_tbv
-    
+            
+        # shift back precisely to the signed domain
+        ref_s_self = ref_u_self._add_constant(sign_bit_val)
+        ref_s_other = ref_u_other._add_constant(sign_bit_val)
+            
         return ref_s_self, ref_s_other
 
     def join(self, other: "TristateBitVector") -> "TristateBitVector":
