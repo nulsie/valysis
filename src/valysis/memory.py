@@ -496,16 +496,23 @@ class MemoryState:
                         
                     chunk_entry = self.chunk_taints.get(reg, {}).get(c_idx)
                     chunk_taint = None
+                    is_sub_byte_taint = False
+                    
                     if chunk_entry is not None:
                         if isinstance(chunk_entry, dict):
                             chunk_taint = chunk_entry.get(loc_off)
+                            is_sub_byte_taint = True
                         else:
+                            # this is a full chunk taint
                             chunk_taint = chunk_entry
                                 
                     region_taint = self.region_taints.get(reg)
         
                     if entry is not None:
+                        # (v1.1.4) fix: made that precise byte entries take abs precedence over fct to prevent fct from polluting the precise writes
                         resolved_byte = entry
+                        if is_sub_byte_taint and chunk_taint is not None:
+                            resolved_byte = resolved_byte.union(chunk_taint)
                     else:
                         resolved_byte = ValueSet.absolute(VSAReducedState(
                             CircularStridedInterval.top(8),
