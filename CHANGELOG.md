@@ -14,6 +14,8 @@ as the name suggests, this is a file where changes are logged :3
 
 - hardened the relational assumptions(`assume_ult`,`assume_slt`) in CSI and TBV to prevent extreme wrapping intervals, sparse strides, and Python's infinite-precision negative bitwise (~) evaluation traps
 
+- tuned memory tainting in `memory.py` using an absolute precedence method to prevent full chunk taints from polluting already precise entires
+
 ### Changed
 
 ## [v1.1.3] - 2026-10-27
