@@ -890,22 +890,27 @@ class CircularStridedInterval:
         n_lower = u.lower
         n_upper = u.upper
 
-        if thresholds:
-            sorted_thresholds = sorted(list(set(t & self.mask for t in thresholds)))
-
-            if lower_grew:
-                candidates = [t for t in sorted_thresholds if t <= u.lower]
-                n_lower = candidates[-1] if candidates else 0
-
-            if upper_grew:
-                candidates = [t for t in sorted_thresholds if t >= u.upper]
-                n_upper = candidates[0] if candidates else self.mask
-        else:
-            if lower_grew:
-                n_lower = 0
-            if upper_grew:
-                n_upper = self.mask
-
+        # (v1.1.4) change: rewrote the threshold with default threshold(if custom ones are not supplied) which prevents excessive iterations or prematurely collapsing to TOP
+        if thresholds is None:
+            base_thresholds = [0, 0x1000] # include zero and std page alignment boundary
+            for b in (8, 16, 32, 64):
+                if b <= self.bits:
+                    base_thresholds.append((1 << (b - 1)) - 1) # signed max 
+                    base_thresholds.append((1 << b) - 1)       # unsigned max 
+                    
+            thresholds = [t & self.mask for t in base_thresholds if t <= self.mask]
+            thresholds.extend([0, self.mask])
+        
+        sorted_thresholds = sorted(list(set(t & self.mask for t in thresholds)))
+        
+        if lower_grew:
+            candidates = [t for t in sorted_thresholds if t <= u.lower]
+            n_lower = candidates[-1] if candidates else 0
+        
+        if upper_grew:
+            candidates = [t for t in sorted_thresholds if t >= u.upper]
+            n_upper = candidates[0] if candidates else self.mask
+        
         return self.__class__(n_stride, n_lower, n_upper, self.bits)
 
     def narrow(
