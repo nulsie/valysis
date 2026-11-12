@@ -18,6 +18,8 @@ as the name suggests, this is a file where changes are logged :3
 
 ### Changed
 
+- rewrote the thresholds in widen in CSI to have built-in default thresholds(if custom ones are not given)
+
 ## [v1.1.3] - 2026-10-27
 
 ### Fixed
