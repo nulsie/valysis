@@ -500,8 +500,9 @@ class MemoryState:
                     
                     if chunk_entry is not None:
                         if isinstance(chunk_entry, dict):
-                            chunk_taint = chunk_entry.get(loc_off)
-                            is_sub_byte_taint = True
+                            if loc_off in chunk_entry:
+                                chunk_taint = chunk_entry.get(loc_off)
+                                is_sub_byte_taint = True
                         else:
                             # this is a full chunk taint
                             chunk_taint = chunk_entry
@@ -519,11 +520,11 @@ class MemoryState:
                             TristateBitVector.top(8)
                         ))
         
-                    # apply chunk and region taints
-                    if region_taint:
-                        resolved_byte = resolved_byte.union(region_taint)
-                    if chunk_taint:
-                        resolved_byte = resolved_byte.union(chunk_taint)
+                        # apply chunk and region taints
+                        if region_taint:
+                            resolved_byte = resolved_byte.union(region_taint)
+                        if chunk_taint:
+                            resolved_byte = resolved_byte.union(chunk_taint)
         
                     slices.append(resolved_byte)
         
