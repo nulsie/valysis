@@ -493,22 +493,19 @@ class TristateBitVector:
                 
         return self.__class__(self.bits, n_ones, n_zeros)
 
-    # (v1.1.4) fix: added the signed modulo method for supporting the signed remainder tracking using domain shifting
+    # (v1.1.4) fix: added the signed modulo method for supporting the signed remainder tracking by bridging it through CSI
     def signed_mod(self: "TristateBitVector", other: "TristateBitVector") -> "TristateBitVector":
         if self.is_empty or other.is_empty:
             return self.empty(self.bits)
-    
+        
         if other.ones == 0 and other.zeros == self.mask:
             return self.empty(self.bits)
     
-        sign_bit_val = 1 << (self.bits - 1)
-        offset_tbv = self.value(sign_bit_val, self.bits)
-    
-        # shift signed domain into unsigned equivalent domain [0, 2^bits - 1]
-        u_self = self + offset_tbv
-        u_other = other + offset_tbv
-    
-        ref_u_mod = u_self.__mod__(u_other)
-    
-        # shift back (remainder retains sign of dividend, so shifting back aligns with signed offset behavior)
-        return ref_u_mod
+        from intervals import CircularStridedInterval
+        csi_self = CircularStridedInterval(1, self.ones, self.ones | self.unknown, self.bits)
+        csi_other = CircularStridedInterval(1, other.ones, other.ones | other.unknown, self.bits)
+        try:
+            res_csi = csi_self.signed_mod(csi_other)
+            return self.__class__(self.bits, res_csi.lower, ~res_csi.upper & self.mask)
+        except Exception:
+            return self.top(self.bits)
