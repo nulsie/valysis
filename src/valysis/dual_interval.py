@@ -257,10 +257,13 @@ class DualInterval:
     def signed_mod(self, other: "DualInterval") -> "DualInterval":
         if self.is_empty or other.is_empty:
             return self.empty(self.bits)
-    
+        
         try:
-            res_u = self.u_domain.signed_mod(other.u_domain)
-            res_s = self.s_domain.signed_mod(other.s_domain)
+            sync_self = self.synchronize()
+            sync_other = other.synchronize()
+                
+            res_u = sync_self.u_domain.signed_mod(sync_other.u_domain)
+            res_s = self._shift_domain(res_u, self.sign_bit)
             return DualInterval(res_u, res_s, _is_synced=False, _is_biased=True)
         except VSADivisionByZero as e:
             surviving_u = e.surviving_state
