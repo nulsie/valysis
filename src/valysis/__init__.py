@@ -15,6 +15,7 @@ __all__ = [
     "HybridSetDomain",
     "MemoryRegion",
     "AbsoluteRegion",
+    "StackRegion",
     "GlobalRegion",
     "ValueSet",
     "MemoryState",
