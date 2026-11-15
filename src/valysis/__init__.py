@@ -3,7 +3,7 @@ from .intervals import CircularStridedInterval
 from .dual_interval import DualInterval
 from .tristate import TristateBitVector
 from .product import VSAReducedState, HybridSetDomain
-from .memory import MemoryRegion, AbsoluteRegion, GlobalRegion, ValueSet, MemoryState
+from .memory import MemoryRegion, AbsoluteRegion, StackRegion, GlobalRegion, ValueSet, MemoryState
 
 __version__ = "1.1.4"
 __all__ = [
